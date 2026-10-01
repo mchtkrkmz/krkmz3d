@@ -528,20 +528,20 @@ export class CardTableScene {
     const activeCardIds = new Set<string>();
 
     // 1. Local Player's Hand (Fan arrangement in front of camera)
-    const handRadius = 0.42;
+    const handRadius = 0.44;
     const handCount = playerHand.length;
-    const startAngle = -Math.PI / 14 * (handCount - 1);
-    const stepAngle = handCount > 1 ? (Math.PI / 7) / (handCount - 1) : 0;
+    const startAngle = -Math.PI / 16 * (handCount - 1);
+    const stepAngle = handCount > 1 ? (Math.PI / 8) / (handCount - 1) : 0;
 
     playerHand.forEach((card, index) => {
       activeCardIds.add(card.id);
       const angle = startAngle + index * stepAngle;
 
       const targetX = Math.sin(angle) * handRadius;
-      const targetZ = 0.58 - Math.cos(angle) * 0.08;
-      const targetY = 0.86 + index * 0.001; // slight stack bias to avoid z-fighting
-      const rotZ = -angle * 0.8;
-      const rotX = -Math.PI / 4.5;
+      const targetZ = 0.54 - Math.cos(angle) * 0.06;
+      const targetY = 0.86 + index * 0.0015; // slight stack bias
+      const rotZ = -angle * 0.7;
+      const rotX = -0.22; // Comfortable tilt facing player's eyes
 
       let mesh = this.cardMeshes.get(card.id);
       if (!mesh) {
@@ -558,24 +558,23 @@ export class CardTableScene {
       ud.originalRot = new THREE.Euler(rotX, 0, rotZ);
 
       if (!ud.isDragging) {
-        mesh.position.lerp(ud.originalPos, 0.15);
-        mesh.rotation.x = THREE.MathUtils.lerp(mesh.rotation.x, rotX, 0.15);
-        mesh.rotation.y = THREE.MathUtils.lerp(mesh.rotation.y, 0, 0.15);
-        mesh.rotation.z = THREE.MathUtils.lerp(mesh.rotation.z, rotZ, 0.15);
+        mesh.position.lerp(ud.originalPos, 0.2);
+        mesh.rotation.x = THREE.MathUtils.lerp(mesh.rotation.x, rotX, 0.2);
+        mesh.rotation.y = THREE.MathUtils.lerp(mesh.rotation.y, 0, 0.2);
+        mesh.rotation.z = THREE.MathUtils.lerp(mesh.rotation.z, rotZ, 0.2);
       }
     });
 
     // 2. Middle Pile Cards on the Table
     middleCards.forEach((card, index) => {
       activeCardIds.add(card.id);
-      const isTop = index === middleCards.length - 1;
-      const targetY = 0.765 + index * 0.0015;
+      const targetY = 0.762 + index * 0.002;
 
       // Realistic slight random jitter per card for authentic kahvehane feel
       const seed = (card.rank * 17 + index * 31) % 100;
-      const jitterX = ((seed % 10) - 5) * 0.004;
-      const jitterZ = (((seed / 10) | 0) - 5) * 0.004;
-      const jitterRotY = ((seed % 20) - 10) * 0.025;
+      const jitterX = ((seed % 10) - 5) * 0.006;
+      const jitterZ = (((seed / 10) | 0) - 5) * 0.006;
+      const jitterRotY = ((seed % 20) - 10) * 0.04;
 
       let mesh = this.cardMeshes.get(card.id);
       if (!mesh) {
@@ -590,16 +589,9 @@ export class CardTableScene {
 
       const targetPos = new THREE.Vector3(jitterX, targetY, jitterZ);
       mesh.position.lerp(targetPos, 0.2);
-      mesh.rotation.x = -Math.PI / 2; // Flat on felt
-      mesh.rotation.y = 0;
-      mesh.rotation.z = jitterRotY;
 
-      // Ensure middle cards are facing UP (except if pişti initial 3 cards facedown)
-      const matArray = mesh.material as THREE.Material[];
-      if (matArray && matArray[4]) {
-        // Face texture is material index 4
-        matArray[4].visible = true;
-      }
+      // -Math.PI / 2 on X ensures Front Face (+Z) points directly UP into view
+      mesh.rotation.set(-Math.PI / 2, 0, jitterRotY);
     });
 
     // 3. Opponent Seated Players Card Backs (Facing other players)
@@ -652,32 +644,37 @@ export class CardTableScene {
 
   // Create thin realistic 3D Box card mesh with crisp front & back textures
   private create3DCardMesh(card: Card, isPlayerCard: boolean, seatIndex: number): THREE.Mesh {
-    const cardWidth = 0.065; // 6.5 cm
-    const cardHeight = 0.096; // 9.6 cm
-    const cardThickness = 0.0006; // 0.6 mm
+    const cardWidth = 0.072; // 7.2 cm standard playing card width
+    const cardHeight = 0.106; // 10.6 cm standard playing card height
+    const cardThickness = 0.0012; // 1.2 mm cardstock thickness
 
-    const geo = new THREE.BoxGeometry(cardWidth, cardThickness, cardHeight);
+    // Box Geometry: X = Width, Y = Height, Z = Thickness
+    const geo = new THREE.BoxGeometry(cardWidth, cardHeight, cardThickness);
 
-    const edgeMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.8 });
+    const edgeMat = new THREE.MeshStandardMaterial({
+      color: 0xf1f5f9,
+      roughness: 0.8,
+    });
     const frontTex = getCardFrontTexture(card);
     const backTex = getCardBackTexture();
 
     const frontMat = new THREE.MeshStandardMaterial({
       map: frontTex,
-      roughness: 0.35,
-      metalness: 0.05,
+      roughness: 0.3,
+      metalness: 0.02,
     });
 
     const backMat = new THREE.MeshStandardMaterial({
       map: backTex,
-      roughness: 0.35,
-      metalness: 0.05,
+      roughness: 0.3,
+      metalness: 0.02,
     });
 
     // In Three.js BoxGeometry:
-    // materials: [right, left, top(+Y), bottom(-Y), front(+Z), back(-Z)]
-    // We treat +Y as Front and -Y as Back so when flat (-PI/2 X), +Y is face up!
-    const materials = [edgeMat, edgeMat, frontMat, backMat, edgeMat, edgeMat];
+    // materials: [right (+X), left (-X), top (+Y), bottom (-Y), front (+Z), back (-Z)]
+    // Face +Z is Front (Front Face with number/suit)
+    // Face -Z is Back (Medallion Pattern)
+    const materials = [edgeMat, edgeMat, edgeMat, edgeMat, frontMat, backMat];
 
     const mesh = new THREE.Mesh(geo, materials);
     mesh.castShadow = true;

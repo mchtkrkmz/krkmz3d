@@ -12,6 +12,7 @@ import {
   Hand,
   Trophy,
   Info,
+  Sparkles,
 } from 'lucide-react';
 
 interface GameHUDProps {
@@ -64,6 +65,8 @@ export const GameHUD: React.FC<GameHUDProps> = ({
     room.status === 'bidding' &&
     room.highestBidder === localPlayer.seatIndex &&
     room.trumpSuit === 'none';
+
+  const topCard = room.middleCards.length > 0 ? room.middleCards[room.middleCards.length - 1] : null;
 
   return (
     <>
@@ -163,16 +166,11 @@ export const GameHUD: React.FC<GameHUDProps> = ({
           ) : (
             <button
               onClick={onEnterVR}
-              disabled={!isVRSupported}
               title={isVRSupported ? 'Meta Quest 3 VR Başlığı ile Masaya Gir' : 'WebXR bu tarayıcıda desteklenmiyor'}
-              className={`px-3.5 py-2 rounded-2xl font-black text-xs flex items-center gap-1.5 shadow-xl transition cursor-pointer ${
-                isVRSupported
-                  ? 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 shadow-amber-500/20 active:scale-95'
-                  : 'bg-slate-800/80 border border-slate-700 text-slate-400 cursor-not-allowed'
-              }`}
+              className="px-4 py-2.5 rounded-2xl font-black text-xs flex items-center gap-2 shadow-xl transition cursor-pointer bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 text-slate-950 shadow-amber-500/30 active:scale-95 border border-amber-300"
             >
-              <Glasses className="w-4 h-4" />
-              <span>{isVRSupported ? "QUEST 3 VR'A GİR" : '3D MASA MODU'}</span>
+              <Glasses className="w-4 h-4 fill-slate-950" />
+              <span>🥽 QUEST 3 VR MODUNA GİR</span>
             </button>
           )}
 
@@ -184,6 +182,64 @@ export const GameHUD: React.FC<GameHUDProps> = ({
           >
             <LogOut className="w-4 h-4" />
           </button>
+        </div>
+      </div>
+
+      {/* Prominent Quest 3 VR Floating Callout */}
+      {!isXRActive && isVRSupported && (
+        <div className="fixed top-18 right-3 z-40 pointer-events-auto">
+          <button
+            onClick={onEnterVR}
+            className="px-4 py-2 bg-sky-500/20 border border-sky-400/50 hover:bg-sky-500/30 text-sky-200 text-xs font-bold rounded-2xl shadow-xl flex items-center gap-2 cursor-pointer transition animate-pulse"
+          >
+            <Glasses className="w-4 h-4 text-sky-300" />
+            <span>Meta Quest 3 Başlığı Algılandı — VR'a Geçmek İçin Tıklayın</span>
+          </button>
+        </div>
+      )}
+
+      {/* Floating Center Table Card Widget (Yerdeki Kart & Son Oynanan) */}
+      <div className="fixed top-18 left-3 z-30 pointer-events-auto">
+        <div className="bg-slate-900/95 backdrop-blur-md border border-slate-800 hover:border-amber-500/50 rounded-2xl p-3 shadow-2xl flex items-center gap-3 transition">
+          {topCard ? (
+            <>
+              {/* Crisp Card Miniature */}
+              <div className="w-11 h-16 bg-white rounded-lg shadow-md border-2 border-slate-300 flex flex-col items-center justify-between py-1 px-1 shrink-0">
+                <span className="text-xs font-black leading-none" style={{ color: SUIT_COLORS[topCard.suit] }}>
+                  {topCard.value}
+                </span>
+                <span className="text-xl leading-none" style={{ color: SUIT_COLORS[topCard.suit] }}>
+                  {SUIT_SYMBOLS[topCard.suit]}
+                </span>
+                <span className="text-[9px] font-bold text-slate-400">
+                  {SUIT_NAMES_TR[topCard.suit].substring(0, 1)}
+                </span>
+              </div>
+              <div>
+                <div className="text-[10px] uppercase font-bold text-amber-400 tracking-wider flex items-center gap-1">
+                  <span>Yerdeki Kart</span>
+                  <span className="text-slate-400">• {room.middleCards.length} Kart</span>
+                </div>
+                <div className="text-sm font-black text-white">
+                  {SUIT_NAMES_TR[topCard.suit]} {topCard.value === 'J' ? 'Vale' : topCard.value === 'Q' ? 'Kız' : topCard.value === 'K' ? 'Papaz' : topCard.value === 'A' ? 'As' : topCard.value}
+                </div>
+                <div className="text-[10px] text-slate-400">
+                  {room.lastActionText || 'Son kart masada'}
+                </div>
+                {room.gameType === 'pisti' && room.middleCards.length === 1 && (
+                  <div className="mt-1 flex items-center gap-1 text-[10px] font-bold text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/40 animate-pulse">
+                    <Sparkles className="w-3 h-3 text-amber-400" />
+                    PİŞTİ FIRSATI! (Eşleşen kart veya Vale)
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="text-xs text-slate-400 py-1 px-2">
+              <span className="text-amber-400 font-bold block mb-0.5">Masa Boş</span>
+              <span>İlk kartı siz oynayın</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -201,7 +257,7 @@ export const GameHUD: React.FC<GameHUDProps> = ({
         </div>
       )}
 
-      {/* Batak Bidding Modal (When it is local player's turn to bid) */}
+      {/* Batak Bidding Modal */}
       {isBiddingPhase && isMyTurn && !isChoosingTrump && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl text-center text-white">
@@ -240,7 +296,7 @@ export const GameHUD: React.FC<GameHUDProps> = ({
         </div>
       )}
 
-      {/* Batak Trump (Koz) Selection Modal (When player won auction) */}
+      {/* Batak Trump (Koz) Selection Modal */}
       {isChoosingTrump && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl text-center text-white">
@@ -320,9 +376,9 @@ export const GameHUD: React.FC<GameHUDProps> = ({
 
       {/* Bottom Hint Banner */}
       <div className="fixed bottom-3 inset-x-3 z-30 flex justify-center pointer-events-none">
-        <div className="bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-full px-4 py-1.5 shadow-lg text-[11px] text-slate-400 flex items-center gap-2">
-          <Info className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-          <span>Meta Quest 3: Başparmak & İşaret parmağınızı birleştirerek kartı tutun ve masaya fırlatın.</span>
+        <div className="bg-slate-900/90 backdrop-blur-md border border-slate-800 rounded-full px-4 py-2 shadow-lg text-xs text-slate-300 flex items-center gap-2">
+          <Info className="w-4 h-4 text-amber-400 shrink-0" />
+          <span>Meta Quest 3: Başparmak + İşaret parmağınızı birleştirerek kartı tutun ve masaya fırlatın.</span>
         </div>
       </div>
     </>

@@ -19,10 +19,10 @@ export const SUIT_NAMES_TR: Record<Suit, string> = {
 };
 
 export const SUIT_COLORS: Record<Suit, string> = {
-  spades: '#111827',
-  hearts: '#e11d48',
-  diamonds: '#e11d48',
-  clubs: '#111827',
+  spades: '#0f172a',
+  hearts: '#dc2626',
+  diamonds: '#ea580c',
+  clubs: '#0f172a',
 };
 
 export function getRank(value: CardValue): number {
@@ -68,7 +68,7 @@ export function shuffleDeck(deck: Card[]): Card[] {
   return array;
 }
 
-// Cache textures for performance and memory optimization
+// Cache textures for high performance
 const cardTextureCache: Map<string, THREE.CanvasTexture> = new Map();
 let backTextureCache: THREE.CanvasTexture | null = null;
 
@@ -77,125 +77,192 @@ export function getCardFrontTexture(card: Card): THREE.CanvasTexture {
     return cardTextureCache.get(card.id)!;
   }
 
+  // High-Resolution 1024x1440 for VR & crisp legibility
   const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 716;
+  canvas.width = 1024;
+  canvas.height = 1440;
   const ctx = canvas.getContext('2d')!;
 
-  // Smooth background with soft rounded shadow boundary
-  ctx.fillStyle = '#ffffff';
+  // 1. Warm ivory cardstock background with rounded paper appearance
+  ctx.fillStyle = '#faf8f5';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Subtle border & ivory paper grain
-  ctx.strokeStyle = '#e2e8f0';
-  ctx.lineWidth = 12;
-  ctx.strokeRect(6, 6, canvas.width - 12, canvas.height - 12);
+  // Subtle linen texture grain
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.015)';
+  for (let y = 0; y < canvas.height; y += 4) {
+    ctx.fillRect(0, y, canvas.width, 1.5);
+  }
+  for (let x = 0; x < canvas.width; x += 4) {
+    ctx.fillRect(x, 0, 1.5, canvas.height);
+  }
 
-  ctx.strokeStyle = '#cbd5e1';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
+  // Double gold & dark borders
+  ctx.strokeStyle = '#d4af37'; // Antique Gold
+  ctx.lineWidth = 16;
+  ctx.strokeRect(24, 24, canvas.width - 48, canvas.height - 48);
+
+  ctx.strokeStyle = '#e2e8f0';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(48, 48, canvas.width - 96, canvas.height - 96);
 
   const color = SUIT_COLORS[card.suit];
   const symbol = SUIT_SYMBOLS[card.suit];
 
-  // Corner 1 (Top-Left)
-  ctx.fillStyle = color;
-  ctx.font = 'bold 56px "Trebuchet MS", sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(card.value, 60, 80);
+  // Helper for crisp corner indices
+  const drawCorner = (x: number, y: number, inverted: boolean) => {
+    ctx.save();
+    ctx.translate(x, y);
+    if (inverted) ctx.rotate(Math.PI);
 
-  ctx.font = '48px "Trebuchet MS", sans-serif';
-  ctx.fillText(symbol, 60, 130);
+    // Number/Letter with high-contrast font
+    ctx.fillStyle = color;
+    ctx.font = '900 110px "Arial Black", "Trebuchet MS", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(card.value, 0, 0);
 
-  // Corner 2 (Bottom-Right, inverted)
-  ctx.save();
-  ctx.translate(canvas.width - 60, canvas.height - 80);
-  ctx.rotate(Math.PI);
-  ctx.font = 'bold 56px "Trebuchet MS", sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(card.value, 0, 0);
-  ctx.font = '48px "Trebuchet MS", sans-serif';
-  ctx.fillText(symbol, 0, 50);
-  ctx.restore();
+    // Suit Symbol under number
+    ctx.font = '100px serif';
+    ctx.fillText(symbol, 0, 105);
+    ctx.restore();
+  };
 
-  // Center Art
+  // Top-Left Corner
+  drawCorner(110, 140, false);
+  // Bottom-Right Corner
+  drawCorner(canvas.width - 110, canvas.height - 140, true);
+
   const cx = canvas.width / 2;
   const cy = canvas.height / 2;
 
+  // Center Graphics
   if (['J', 'Q', 'K'].includes(card.value)) {
-    // Royal court card stylized emblem
+    // Ornate Royal Court Card Centerpiece
     ctx.save();
-    ctx.fillStyle = color === '#111827' ? '#1e293b' : '#be123c';
-    ctx.strokeStyle = '#f59e0b';
-    ctx.lineWidth = 4;
-    ctx.strokeRect(cx - 130, cy - 180, 260, 360);
+    // Frame
+    ctx.strokeStyle = '#d4af37';
+    ctx.lineWidth = 8;
+    ctx.strokeRect(cx - 280, cy - 420, 560, 840);
 
+    ctx.fillStyle = color === '#0f172a' ? '#1e293b' : '#881337';
+    ctx.fillRect(cx - 270, cy - 410, 540, 820);
+
+    // Inner parchment
     ctx.fillStyle = '#f8fafc';
-    ctx.fillRect(cx - 126, cy - 176, 252, 352);
+    ctx.fillRect(cx - 250, cy - 390, 500, 780);
 
-    // Decorative court crest
-    ctx.fillStyle = color;
-    ctx.font = 'bold 110px "Trebuchet MS", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(card.value, cx, cy - 50);
-
-    ctx.font = '90px "Trebuchet MS", sans-serif';
-    ctx.fillText(symbol, cx, cy + 60);
-
-    ctx.fillStyle = '#b45309';
-    ctx.font = 'italic bold 22px serif';
-    const courtTitle = card.value === 'J' ? 'VALE' : card.value === 'Q' ? 'KIZ' : 'PAPAZ';
-    ctx.fillText(courtTitle, cx, cy + 140);
-    ctx.restore();
-  } else if (card.value === 'A') {
-    // Majestic Ace
-    ctx.fillStyle = color;
-    ctx.font = '220px "Trebuchet MS", sans-serif';
+    // Large Suit Symbol in background of portrait
+    ctx.fillStyle = color === '#0f172a' ? 'rgba(15, 23, 42, 0.08)' : 'rgba(220, 38, 38, 0.08)';
+    ctx.font = '420px serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(symbol, cx, cy);
 
-    ctx.font = 'italic bold 32px serif';
-    ctx.fillStyle = '#64748b';
-    ctx.fillText('AS', cx, cy + 140);
+    // Royal Portrait Badge
+    ctx.fillStyle = color;
+    ctx.font = '900 240px "Arial Black", sans-serif';
+    ctx.fillText(card.value, cx, cy - 120);
+
+    ctx.font = '220px serif';
+    ctx.fillText(symbol, cx, cy + 130);
+
+    // Turkish Title Banner
+    const courtTitle = card.value === 'J' ? 'VALE' : card.value === 'Q' ? 'KIZ' : 'PAPAZ';
+    ctx.fillStyle = '#b45309';
+    ctx.font = 'italic 900 52px "Times New Roman", serif';
+    ctx.fillText(courtTitle, cx, cy + 310);
+    ctx.restore();
+  } else if (card.value === 'A') {
+    // Grand Master Ace
+    ctx.fillStyle = color;
+    ctx.font = '480px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(symbol, cx, cy - 20);
+
+    // Under Ace title
+    ctx.font = 'italic 900 70px "Times New Roman", serif';
+    ctx.fillStyle = '#475569';
+    ctx.fillText('AS', cx, cy + 320);
+
+    // Crown insignia for spades Ace
+    if (card.suit === 'spades') {
+      ctx.font = '70px serif';
+      ctx.fillText('👑', cx, cy - 320);
+    }
   } else {
-    // Numbered Cards with balanced pip arrangement
+    // Numbered Cards with balanced clear pip arrangement
     const pips = parseInt(card.value, 10);
     ctx.fillStyle = color;
-    ctx.font = '80px "Trebuchet MS", sans-serif';
+    ctx.font = '160px serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
+    const colLeft = cx - 150;
+    const colRight = cx + 150;
+
     if (pips === 2) {
-      ctx.fillText(symbol, cx, cy - 130);
-      ctx.fillText(symbol, cx, cy + 130);
+      ctx.fillText(symbol, cx, cy - 280);
+      ctx.fillText(symbol, cx, cy + 280);
     } else if (pips === 3) {
-      ctx.fillText(symbol, cx, cy - 150);
+      ctx.fillText(symbol, cx, cy - 320);
       ctx.fillText(symbol, cx, cy);
-      ctx.fillText(symbol, cx, cy + 150);
+      ctx.fillText(symbol, cx, cy + 320);
     } else if (pips === 4) {
-      ctx.fillText(symbol, cx - 70, cy - 130);
-      ctx.fillText(symbol, cx + 70, cy - 130);
-      ctx.fillText(symbol, cx - 70, cy + 130);
-      ctx.fillText(symbol, cx + 70, cy + 130);
+      ctx.fillText(symbol, colLeft, cy - 280);
+      ctx.fillText(symbol, colRight, cy - 280);
+      ctx.fillText(symbol, colLeft, cy + 280);
+      ctx.fillText(symbol, colRight, cy + 280);
     } else if (pips === 5) {
-      ctx.fillText(symbol, cx - 70, cy - 130);
-      ctx.fillText(symbol, cx + 70, cy - 130);
+      ctx.fillText(symbol, colLeft, cy - 280);
+      ctx.fillText(symbol, colRight, cy - 280);
       ctx.fillText(symbol, cx, cy);
-      ctx.fillText(symbol, cx - 70, cy + 130);
-      ctx.fillText(symbol, cx + 70, cy + 130);
-    } else {
-      // 6 to 10
-      ctx.fillText(symbol, cx - 70, cy - 160);
-      ctx.fillText(symbol, cx + 70, cy - 160);
-      ctx.fillText(symbol, cx - 70, cy);
-      ctx.fillText(symbol, cx + 70, cy);
-      ctx.fillText(symbol, cx - 70, cy + 160);
-      ctx.fillText(symbol, cx + 70, cy + 160);
-      if (pips >= 7) ctx.fillText(symbol, cx, cy - 80);
-      if (pips >= 8) ctx.fillText(symbol, cx, cy + 80);
-      if (pips === 10) ctx.fillText(symbol, cx, cy);
+      ctx.fillText(symbol, colLeft, cy + 280);
+      ctx.fillText(symbol, colRight, cy + 280);
+    } else if (pips === 6) {
+      ctx.fillText(symbol, colLeft, cy - 300);
+      ctx.fillText(symbol, colRight, cy - 300);
+      ctx.fillText(symbol, colLeft, cy);
+      ctx.fillText(symbol, colRight, cy);
+      ctx.fillText(symbol, colLeft, cy + 300);
+      ctx.fillText(symbol, colRight, cy + 300);
+    } else if (pips === 7) {
+      ctx.fillText(symbol, colLeft, cy - 300);
+      ctx.fillText(symbol, colRight, cy - 300);
+      ctx.fillText(symbol, cx, cy - 150);
+      ctx.fillText(symbol, colLeft, cy);
+      ctx.fillText(symbol, colRight, cy);
+      ctx.fillText(symbol, colLeft, cy + 300);
+      ctx.fillText(symbol, colRight, cy + 300);
+    } else if (pips === 8) {
+      ctx.fillText(symbol, colLeft, cy - 320);
+      ctx.fillText(symbol, colRight, cy - 320);
+      ctx.fillText(symbol, cx, cy - 160);
+      ctx.fillText(symbol, colLeft, cy);
+      ctx.fillText(symbol, colRight, cy);
+      ctx.fillText(symbol, cx, cy + 160);
+      ctx.fillText(symbol, colLeft, cy + 320);
+      ctx.fillText(symbol, colRight, cy + 320);
+    } else if (pips === 9) {
+      ctx.fillText(symbol, colLeft, cy - 340);
+      ctx.fillText(symbol, colRight, cy - 340);
+      ctx.fillText(symbol, colLeft, cy - 110);
+      ctx.fillText(symbol, colRight, cy - 110);
+      ctx.fillText(symbol, cx, cy);
+      ctx.fillText(symbol, colLeft, cy + 110);
+      ctx.fillText(symbol, colRight, cy + 110);
+      ctx.fillText(symbol, colLeft, cy + 340);
+      ctx.fillText(symbol, colRight, cy + 340);
+    } else if (pips === 10) {
+      ctx.fillText(symbol, colLeft, cy - 340);
+      ctx.fillText(symbol, colRight, cy - 340);
+      ctx.fillText(symbol, cx, cy - 220);
+      ctx.fillText(symbol, colLeft, cy - 100);
+      ctx.fillText(symbol, colRight, cy - 100);
+      ctx.fillText(symbol, colLeft, cy + 100);
+      ctx.fillText(symbol, colRight, cy + 100);
+      ctx.fillText(symbol, cx, cy + 220);
+      ctx.fillText(symbol, colLeft, cy + 340);
+      ctx.fillText(symbol, colRight, cy + 340);
     }
   }
 
@@ -212,69 +279,69 @@ export function getCardBackTexture(): THREE.CanvasTexture {
   if (backTextureCache) return backTextureCache;
 
   const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 716;
+  canvas.width = 1024;
+  canvas.height = 1440;
   const ctx = canvas.getContext('2d')!;
 
-  // Dark crimson & navy Turkish kahvehane vintage medallion pattern
+  // Deep royal crimson & navy background
   ctx.fillStyle = '#0f172a';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   // Outer gold rim
-  ctx.strokeStyle = '#d97706';
-  ctx.lineWidth = 14;
-  ctx.strokeRect(14, 14, canvas.width - 28, canvas.height - 28);
-
-  ctx.strokeStyle = '#b45309';
-  ctx.lineWidth = 4;
+  ctx.strokeStyle = '#d4af37';
+  ctx.lineWidth = 28;
   ctx.strokeRect(28, 28, canvas.width - 56, canvas.height - 56);
 
-  // Diamond weave pattern in center
-  ctx.fillStyle = '#1e1b4b';
-  ctx.fillRect(36, 36, canvas.width - 72, canvas.height - 72);
+  ctx.strokeStyle = '#b45309';
+  ctx.lineWidth = 8;
+  ctx.strokeRect(56, 56, canvas.width - 112, canvas.height - 112);
 
-  ctx.strokeStyle = '#312e81';
-  ctx.lineWidth = 3;
-  for (let x = 40; x < canvas.width - 40; x += 30) {
+  // Diamond weave arabesque pattern
+  ctx.fillStyle = '#1e1b4b';
+  ctx.fillRect(72, 72, canvas.width - 144, canvas.height - 144);
+
+  ctx.strokeStyle = '#3730a3';
+  ctx.lineWidth = 6;
+  for (let x = 80; x < canvas.width - 80; x += 60) {
     ctx.beginPath();
-    ctx.moveTo(x, 40);
-    ctx.lineTo(x + 200, canvas.height - 40);
+    ctx.moveTo(x, 80);
+    ctx.lineTo(x + 400, canvas.height - 80);
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.moveTo(x, canvas.height - 40);
-    ctx.lineTo(x + 200, 40);
+    ctx.moveTo(x, canvas.height - 80);
+    ctx.lineTo(x + 400, 80);
     ctx.stroke();
   }
 
-  // Central Luxury Seal
+  // Central Luxury Gold Seal
   const cx = canvas.width / 2;
   const cy = canvas.height / 2;
 
   ctx.beginPath();
-  ctx.arc(cx, cy, 110, 0, Math.PI * 2);
-  ctx.fillStyle = '#7c2d12';
+  ctx.arc(cx, cy, 220, 0, Math.PI * 2);
+  ctx.fillStyle = '#831843';
   ctx.fill();
   ctx.strokeStyle = '#f59e0b';
-  ctx.lineWidth = 8;
+  ctx.lineWidth = 16;
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.arc(cx, cy, 95, 0, Math.PI * 2);
-  ctx.strokeStyle = '#d97706';
-  ctx.lineWidth = 2;
+  ctx.arc(cx, cy, 190, 0, Math.PI * 2);
+  ctx.strokeStyle = '#d4af37';
+  ctx.lineWidth = 4;
   ctx.stroke();
 
   // VR & Turkish motif text
   ctx.fillStyle = '#fef3c7';
-  ctx.font = 'bold 36px "Trebuchet MS", sans-serif';
+  ctx.font = '900 80px "Arial Black", sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('VR XR', cx, cy - 25);
+  ctx.fillText('VR XR', cx, cy - 50);
 
-  ctx.font = 'italic bold 20px serif';
+  ctx.font = 'italic 900 44px "Times New Roman", serif';
   ctx.fillStyle = '#fbbf24';
-  ctx.fillText('PİŞTİ & BATAK', cx, cy + 20);
+  ctx.fillText('PİŞTİ & BATAK', cx, cy + 40);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.minFilter = THREE.LinearMipMapLinearFilter;

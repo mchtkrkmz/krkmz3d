@@ -105,6 +105,26 @@ export const Lobby: React.FC<LobbyProps> = ({ onCreateRoom, onJoinRoom, initialR
         </div>
       </header>
 
+      {/* Meta Quest 3 Hero Guide Banner */}
+      <div className="max-w-4xl mx-auto w-full mt-4 p-4 rounded-3xl bg-gradient-to-r from-indigo-950/70 via-slate-900/80 to-purple-950/70 border border-indigo-500/40 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="p-3 bg-indigo-500/20 text-indigo-400 rounded-2xl shrink-0">
+            <Glasses className="w-7 h-7" />
+          </div>
+          <div>
+            <h2 className="text-sm md:text-base font-black text-white flex items-center gap-2">
+              Meta Quest 3 WebXR Kart Masası
+              <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/40">
+                El Takibi & Haptik
+              </span>
+            </h2>
+            <p className="text-xs text-slate-300">
+              Oculus Browser'da masayı kurduktan sonra üst paneldeki <strong className="text-amber-300">"🥽 QUEST 3 VR MODUNA GİR"</strong> butonuna dokunarak 360° tam ekran sanal gerçekliğe geçebilirsiniz.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Main Content Area */}
       <main className="max-w-4xl mx-auto w-full my-6 grid md:grid-cols-12 gap-8 items-start">
         {/* Left Column: Avatar & Profile Customization */}
