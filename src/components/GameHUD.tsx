@@ -119,23 +119,23 @@ export const GameHUD: React.FC<GameHUDProps> = ({
           </div>
         </div>
 
-        {/* Right: Controls & Quest 3 VR Button */}
-        <div className="flex items-center gap-2 pointer-events-auto">
+        {/* Right: Controls Icons */}
+        <div className="flex items-center gap-1.5 md:gap-2 pointer-events-auto">
           {/* Hand Tracking Telemetry Button */}
           <button
             onClick={onOpenTelemetry}
             title="Quest 3 El Takibi Verileri"
-            className="p-2.5 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 text-sky-400 rounded-2xl backdrop-blur-md shadow-xl transition flex items-center gap-1.5 cursor-pointer"
+            className="p-2 md:p-2.5 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 text-sky-400 rounded-2xl backdrop-blur-md shadow-xl transition flex items-center gap-1.5 cursor-pointer"
           >
             <Hand className="w-4 h-4" />
-            <span className="hidden md:inline text-xs font-semibold">El Takibi</span>
+            <span className="hidden xl:inline text-xs font-semibold">El Takibi</span>
           </button>
 
           {/* Voice Mic Toggle */}
           <button
             onClick={onToggleMic}
             title={isMicMuted ? 'Mikrofonu Aç' : 'Mikrofonu Kapat'}
-            className={`p-2.5 border rounded-2xl backdrop-blur-md shadow-xl transition cursor-pointer ${
+            className={`p-2 md:p-2.5 border rounded-2xl backdrop-blur-md shadow-xl transition cursor-pointer ${
               isMicMuted
                 ? 'bg-slate-900/90 border-slate-800 text-slate-400 hover:text-white'
                 : isSpeaking
@@ -150,39 +150,42 @@ export const GameHUD: React.FC<GameHUDProps> = ({
           <button
             onClick={onToggleSound}
             title={isSoundMuted ? 'Sesi Aç' : 'Sesi Kapat'}
-            className="p-2.5 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-2xl backdrop-blur-md shadow-xl transition cursor-pointer"
+            className="p-2 md:p-2.5 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-2xl backdrop-blur-md shadow-xl transition cursor-pointer"
           >
             {isSoundMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
           </button>
-
-          {/* WebXR VR Button for Meta Quest 3 */}
-          {isXRActive ? (
-            <button
-              onClick={onExitVR}
-              className="px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-2xl font-bold text-xs flex items-center gap-1.5 shadow-xl transition cursor-pointer"
-            >
-              VR'dan Çık
-            </button>
-          ) : (
-            <button
-              onClick={onEnterVR}
-              title={isVRSupported ? 'Meta Quest 3 VR Başlığı ile Masaya Gir' : 'WebXR bu tarayıcıda desteklenmiyor'}
-              className="px-4 py-2.5 rounded-2xl font-black text-xs flex items-center gap-2 shadow-xl transition cursor-pointer bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 text-slate-950 shadow-amber-500/30 active:scale-95 border border-amber-300"
-            >
-              <Glasses className="w-4 h-4 fill-slate-950" />
-              <span>🥽 QUEST 3 VR MODUNA GİR</span>
-            </button>
-          )}
 
           {/* Exit Room */}
           <button
             onClick={onLeaveRoom}
             title="Masadan Ayrıl"
-            className="p-2.5 bg-slate-900/90 hover:bg-rose-950/60 border border-slate-800 text-slate-400 hover:text-rose-400 rounded-2xl backdrop-blur-md transition cursor-pointer"
+            className="p-2 md:p-2.5 bg-slate-900/90 hover:bg-rose-950/60 border border-slate-800 text-slate-400 hover:text-rose-400 rounded-2xl backdrop-blur-md transition cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
           </button>
         </div>
+      </div>
+
+      {/* Persistent Floating VR Launch Button (Bottom Right) */}
+      <div className="fixed bottom-4 right-4 z-40 pointer-events-auto">
+        {isXRActive ? (
+          <button
+            onClick={onExitVR}
+            className="px-4 py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-2xl font-black text-xs md:text-sm flex items-center gap-2 shadow-2xl transition cursor-pointer border border-rose-400"
+          >
+            <Glasses className="w-5 h-5" />
+            <span>VR'DAN ÇIK</span>
+          </button>
+        ) : (
+          <button
+            onClick={onEnterVR}
+            title="Meta Quest 3 Sanal Gerçeklik Moduna Geç"
+            className="px-5 py-3.5 rounded-2xl font-black text-xs md:text-sm flex items-center gap-2.5 shadow-2xl transition transform active:scale-95 cursor-pointer bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 shadow-amber-500/30 border-2 border-amber-300"
+          >
+            <Glasses className="w-5 h-5 fill-slate-950" />
+            <span className="tracking-wide">🥽 QUEST 3 VR MODUNA GİR</span>
+          </button>
+        )}
       </div>
 
       {/* Prominent Quest 3 VR Floating Callout */}

@@ -48,6 +48,11 @@ export const VRCanvas: React.FC<VRCanvasProps> = ({
 
     // Initialize WebXR Manager for Meta Quest 3 Hand Tracking
     const xrManager = new WebXRManager(scene.renderer, {
+      onSupportChange: (supported) => {
+        if (onXRManagerReady) {
+          onXRManagerReady(xrManager);
+        }
+      },
       onPinchCard: (hand, position, isPinching) => {
         scene.handleXRPinch(hand, position, isPinching);
       },

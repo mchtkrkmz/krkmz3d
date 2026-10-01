@@ -4,6 +4,7 @@ import { HandPose, HeadPose } from '../types';
 export interface WebXRCallbacks {
   onSessionStart?: (session: XRSession) => void;
   onSessionEnd?: () => void;
+  onSupportChange?: (isSupported: boolean) => void;
   onPinchCard?: (hand: 'left' | 'right', position: THREE.Vector3, isPinching: boolean) => void;
   onTelemetrySample?: (telemetry: {
     pinchCount: number;
@@ -45,6 +46,11 @@ export class WebXRManager {
       } catch {
         this.isVRSupported = false;
       }
+    } else {
+      this.isVRSupported = false;
+    }
+    if (this.callbacks.onSupportChange) {
+      this.callbacks.onSupportChange(this.isVRSupported);
     }
   }
 
@@ -56,8 +62,13 @@ export class WebXRManager {
     return this.session;
   }
 
-  public async enterVR(): Promise<boolean> {
-    if (!('xr' in navigator) || !navigator.xr) return false;
+  public async enterVR(): Promise<{ success: boolean; error?: string }> {
+    if (!('xr' in navigator) || !navigator.xr) {
+      return {
+        success: false,
+        error: 'WebXR bu tarayıcıda bulunamadı. Tam 360° VR deneyimi için lütfen Meta Quest 3 başlığındaki Oculus Browser ile açın.',
+      };
+    }
 
     try {
       const session = await navigator.xr.requestSession('immersive-vr', {
@@ -84,10 +95,14 @@ export class WebXRManager {
       if (this.callbacks.onSessionStart) {
         this.callbacks.onSessionStart(session);
       }
-      return true;
-    } catch (err) {
-      console.error('Failed to start WebXR session:', err);
-      return false;
+      return { success: true };
+    } catch (err: unknown) {
+      console.warn('WebXR session request notice:', err);
+      const msg = err instanceof Error ? err.message : String(err);
+      return {
+        success: false,
+        error: `VR oturumu başlatılamadı (${msg}). Başlığınızın uyku modunda olmadığından emin olun.`,
+      };
     }
   }
 

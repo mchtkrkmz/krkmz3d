@@ -714,10 +714,14 @@ export default function App() {
   // WebXR Enter / Exit
   const handleEnterVR = async () => {
     if (xrManagerRef.current) {
-      const success = await xrManagerRef.current.enterVR();
-      if (success) {
+      const res = await xrManagerRef.current.enterVR();
+      if (res.success) {
         setIsXRActive(true);
+      } else {
+        alert(res.error || 'VR moduna geçilemedi.');
       }
+    } else {
+      alert('WebXR yöneticisi henüz başlatılmadı. Lütfen Meta Quest 3 başlığınızdaki Oculus Browser ile sayfayı açın.');
     }
   };
 
@@ -792,15 +796,17 @@ export default function App() {
   );
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-slate-950 font-sans select-none">
+    <>
       {!room ? (
-        <Lobby
-          onCreateRoom={handleCreateRoom}
-          onJoinRoom={handleJoinRoom}
-          initialRoomCode={initialRoomCode}
-        />
+        <div className="w-full min-h-screen bg-slate-950 font-sans overflow-y-auto">
+          <Lobby
+            onCreateRoom={handleCreateRoom}
+            onJoinRoom={handleJoinRoom}
+            initialRoomCode={initialRoomCode}
+          />
+        </div>
       ) : (
-        <>
+        <div className="fixed inset-0 w-full h-full overflow-hidden bg-slate-950 font-sans select-none">
           {/* 3D WebXR Viewport */}
           <VRCanvas
             playerHand={playerHand}
@@ -856,8 +862,8 @@ export default function App() {
             telemetry={telemetryData}
             isXRActive={isXRActive}
           />
-        </>
+        </div>
       )}
-    </div>
+    </>
   );
 }

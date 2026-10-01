@@ -389,6 +389,32 @@ export const Lobby: React.FC<LobbyProps> = ({ onCreateRoom, onJoinRoom, initialR
         </div>
       </main>
 
+      {/* Sticky Bottom Quick Action Bar for VR & Mobile Viewports */}
+      <div className="sticky bottom-0 inset-x-0 bg-slate-950/95 backdrop-blur-xl border-t border-slate-800 p-3 md:p-4 z-40 mt-6 shadow-2xl flex items-center justify-between gap-3 max-w-4xl mx-auto w-full rounded-t-3xl">
+        <div className="flex items-center gap-2">
+          <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xs shrink-0">
+            {activeTab === 'create' ? (gameType === 'pisti' ? '🃏' : '♠') : '🔗'}
+          </div>
+          <div>
+            <div className="text-xs font-bold text-white leading-tight">
+              {activeTab === 'create' ? `${gameType === 'pisti' ? 'Pişti' : 'Batak'} Masası` : 'Odaya Bağlanma'}
+            </div>
+            <div className="text-[11px] text-slate-400">
+              Oyuncu: <span className="text-amber-300 font-semibold">{playerName || 'İsimsiz'}</span>
+            </div>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={activeTab === 'create' ? handleCreate : handleJoin}
+          className="px-5 md:px-8 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs md:text-sm rounded-2xl flex items-center gap-2 shadow-xl shadow-amber-500/30 transition transform active:scale-95 cursor-pointer shrink-0"
+        >
+          <Play className="w-4 h-4 fill-slate-950" />
+          <span>{activeTab === 'create' ? 'MASAYI KUR & OYUNA GİR' : 'MASAYA BAĞLAN'}</span>
+        </button>
+      </div>
+
       {/* Footer */}
       <footer className="max-w-5xl mx-auto w-full text-center text-xs text-slate-500 pt-4 border-t border-slate-800/80">
         Meta Quest 3 WebXR Kart Salonu • Firebase Gerçek Zamanlı Çok Oyunculu & El Takibi Kaydı
