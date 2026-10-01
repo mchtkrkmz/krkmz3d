@@ -43,14 +43,16 @@ export class CardTableScene {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x0a0f1d);
 
-    const aspect = container.clientWidth / container.clientHeight;
+    const width = container.clientWidth > 0 ? container.clientWidth : (window.innerWidth || 800);
+    const height = container.clientHeight > 0 ? container.clientHeight : (window.innerHeight || 600);
+    const aspect = width / height;
     this.camera = new THREE.PerspectiveCamera(50, aspect, 0.05, 50);
     // Position camera seated at South seat (seat 0)
     this.camera.position.set(0, 1.25, 0.88);
     this.camera.lookAt(0, 0.76, 0);
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
-    this.renderer.setSize(container.clientWidth, container.clientHeight);
+    this.renderer.setSize(width, height);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;

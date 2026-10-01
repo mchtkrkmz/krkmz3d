@@ -72,21 +72,38 @@ export async function testFirestoreConnection(): Promise<boolean> {
   }
 }
 
-// Auto sign-in anonymously for seamless WebXR Quest 3 & Browser play
-export function initAuth(): Promise<User> {
-  return new Promise((resolve, reject) => {
+export interface AppUser {
+  uid: string;
+  isAnonymous?: boolean;
+}
+
+export function getOrCreateUserId(): string {
+  if (typeof window === 'undefined') return 'server_user';
+  let uid = localStorage.getItem('vr_card_player_uid');
+  if (!uid) {
+    uid = `player_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    localStorage.setItem('vr_card_player_uid', uid);
+  }
+  return uid;
+}
+
+// Auto sign-in anonymously for seamless WebXR Quest 3 & Browser play with fallback
+export function initAuth(): Promise<AppUser> {
+  return new Promise((resolve) => {
+    const fallbackId = getOrCreateUserId();
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         unsubscribe();
-        resolve(user);
+        resolve({ uid: user.uid, isAnonymous: user.isAnonymous });
       } else {
         try {
           const userCred = await signInAnonymously(auth);
           unsubscribe();
-          resolve(userCred.user);
-        } catch (err) {
+          resolve({ uid: userCred.user.uid, isAnonymous: true });
+        } catch {
+          // Fallback to persistent client user ID if Auth provider is not enabled
           unsubscribe();
-          reject(err);
+          resolve({ uid: fallbackId, isAnonymous: true });
         }
       }
     });

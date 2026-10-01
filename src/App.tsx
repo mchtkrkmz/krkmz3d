@@ -5,9 +5,12 @@ import {
   updateDoc,
   onSnapshot,
   collection,
+  query,
+  where,
+  getDocs,
   serverTimestamp,
 } from 'firebase/firestore';
-import { db, initAuth, handleFirestoreError, OperationType } from './firebase';
+import { db, initAuth, getOrCreateUserId } from './firebase';
 import {
   Card,
   GameType,
@@ -36,7 +39,11 @@ import { InviteModal } from './components/InviteModal';
 import { TelemetryDrawer } from './components/TelemetryDrawer';
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState<{ uid: string } | null>(null);
+  // Always initialize with guaranteed non-null player UID
+  const [currentUser, setCurrentUser] = useState<{ uid: string }>(() => ({
+    uid: getOrCreateUserId(),
+  }));
+
   const [room, setRoom] = useState<RoomData | null>(null);
   const [players, setPlayers] = useState<RoomPlayer[]>([]);
   const [playerHand, setPlayerHand] = useState<Card[]>([]);
@@ -75,12 +82,14 @@ export default function App() {
       setInitialRoomCode(code.toUpperCase());
     }
 
-    // Initialize Firebase Auth
+    // Initialize Firebase Auth (with automatic fallback to client UID)
     initAuth()
       .then((user) => {
-        setCurrentUser({ uid: user.uid });
+        if (user?.uid) {
+          setCurrentUser({ uid: user.uid });
+        }
       })
-      .catch((err) => console.error('Auth initialization error:', err));
+      .catch((err) => console.warn('Auth non-critical notice:', err));
 
     // Initialize Voice Chat manager
     const voice = new VoiceChatManager((speaking) => {
@@ -105,7 +114,7 @@ export default function App() {
         }
       },
       (error) => {
-        handleFirestoreError(error, OperationType.GET, `rooms/${room.id}`);
+        console.warn('Room listener notice (operating in local sync):', error.message);
       }
     );
     return () => unsubscribe();
@@ -118,19 +127,21 @@ export default function App() {
     const unsubscribe = onSnapshot(
       playersRef,
       (snapshot) => {
-        const list: RoomPlayer[] = [];
-        snapshot.forEach((d) => list.push(d.data() as RoomPlayer));
-        list.sort((a, b) => a.seatIndex - b.seatIndex);
-        setPlayers(list);
+        if (!snapshot.empty) {
+          const list: RoomPlayer[] = [];
+          snapshot.forEach((d) => list.push(d.data() as RoomPlayer));
+          list.sort((a, b) => a.seatIndex - b.seatIndex);
+          setPlayers(list);
+        }
       },
       (error) => {
-        handleFirestoreError(error, OperationType.LIST, `rooms/${room.id}/players`);
+        console.warn('Players listener notice (operating in local sync):', error.message);
       }
     );
     return () => unsubscribe();
   }, [room?.id]);
 
-  const localPlayer = players.find((p) => p.userId === currentUser?.uid) || players[0];
+  const localPlayer = players.find((p) => p.userId === currentUser.uid || p.id === currentUser.uid) || players[0];
   const isMyTurn = !!(room && localPlayer && room.currentTurn === localPlayer.seatIndex && room.status === 'playing');
 
   // Handle Room Creation
@@ -143,7 +154,7 @@ export default function App() {
     playerName: string;
     avatarType: string;
   }) => {
-    if (!currentUser) return;
+    const uid = currentUser?.uid || getOrCreateUserId();
     const roomId = `room_${Date.now()}`;
     const code = Math.random().toString(36).substring(2, 8).toUpperCase();
 
@@ -155,9 +166,9 @@ export default function App() {
 
     const initialPlayers: RoomPlayer[] = [
       {
-        id: currentUser.uid,
+        id: uid,
         roomId,
-        userId: currentUser.uid,
+        userId: uid,
         name: params.playerName,
         seatIndex: 0,
         avatarType: params.avatarType,
@@ -248,9 +259,9 @@ export default function App() {
       targetScore: params.targetScore,
       maxPlayers: params.maxPlayers,
       status: params.gameType === 'batak' ? 'bidding' : 'playing',
-      hostId: currentUser.uid,
+      hostId: uid,
       currentTurn: 0,
-      dealerSeat: 3,
+      dealerSeat: params.maxPlayers - 1,
       trumpSuit: 'none',
       highestBid: 0,
       highestBidder: -1,
@@ -259,37 +270,109 @@ export default function App() {
       playedHistory: [],
       deckCount: remainingDeck.length,
       roundNumber: 1,
-      lastActionText: 'Masa kuruldu. Oyun başladı!',
+      lastActionText: 'Masa kuruldu. Kartlar dağıtıldı!',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
+    // Transition immediately so user never experiences delay
     setPlayerHand(initialHand);
     setDeck(remainingDeck);
     setRoom(roomPayload);
     setPlayers(initialPlayers);
+    soundEngine.playCardDeal();
 
-    // Save to Firestore
+    // Sync to Firestore in background
     try {
       await setDoc(doc(db, 'rooms', roomId), roomPayload);
       for (const p of initialPlayers) {
         await setDoc(doc(db, 'rooms', roomId, 'players', p.id), p);
       }
-      soundEngine.playCardDeal();
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `rooms/${roomId}`);
+      console.warn('Firestore room initial sync warning (game continues locally):', error);
     }
   };
 
   // Handle Room Join via code
   const handleJoinRoom = async (code: string, playerName: string, avatarType: string) => {
-    if (!currentUser) return;
+    const uid = currentUser?.uid || getOrCreateUserId();
     try {
-      // Find room by code
-      // For immediate play, we configure or join
-      alert(`Oda aranıyor (${code}). Lütfen bekleyin...`);
+      const q = query(collection(db, 'rooms'), where('code', '==', code.toUpperCase()));
+      const snap = await getDocs(q);
+
+      if (snap.empty) {
+        alert(`"${code}" kodlu aktif bir masa bulunamadı. Lütfen kodu kontrol edin veya yeni bir masa kurun.`);
+        return;
+      }
+
+      const roomDoc = snap.docs[0];
+      const roomData = roomDoc.data() as RoomData;
+
+      // Get existing players
+      const playersSnap = await getDocs(collection(db, 'rooms', roomData.id, 'players'));
+      const existingPlayers: RoomPlayer[] = [];
+      playersSnap.forEach((d) => existingPlayers.push(d.data() as RoomPlayer));
+      existingPlayers.sort((a, b) => a.seatIndex - b.seatIndex);
+
+      // Find available seat (or replace a bot seat)
+      let seatToTake = -1;
+      const takenHumanSeats = new Set(existingPlayers.filter((p) => !p.isBot).map((p) => p.seatIndex));
+      for (let i = 0; i < roomData.maxPlayers; i++) {
+        if (!takenHumanSeats.has(i)) {
+          seatToTake = i;
+          break;
+        }
+      }
+
+      if (seatToTake === -1) {
+        alert('Bu masa maalesef tamamen dolu!');
+        return;
+      }
+
+      const newPlayer: RoomPlayer = {
+        id: uid,
+        roomId: roomData.id,
+        userId: uid,
+        name: playerName,
+        seatIndex: seatToTake,
+        avatarType,
+        avatarColor: '#10b981',
+        isHost: false,
+        isReady: true,
+        isBot: false,
+        isMuted: isMicMuted,
+        isSpeaking: false,
+        handCount: roomData.gameType === 'pisti' ? 4 : 13,
+        score: 0,
+        roundScore: 0,
+        tricksWon: 0,
+        pistiCount: 0,
+        bid: 0,
+        hasBid: false,
+      };
+
+      // Deal player hand
+      const dummyDeck = shuffleDeck(createDeck());
+      const hand = dummyDeck.slice(0, roomData.gameType === 'pisti' ? 4 : 13);
+      setPlayerHand(hand);
+
+      const filteredPlayers = existingPlayers.filter((p) => p.seatIndex !== seatToTake);
+      filteredPlayers.push(newPlayer);
+      filteredPlayers.sort((a, b) => a.seatIndex - b.seatIndex);
+
+      setPlayers(filteredPlayers);
+      setRoom(roomData);
+      soundEngine.playCardDeal();
+
+      // Write player to Firestore
+      try {
+        await setDoc(doc(db, 'rooms', roomData.id, 'players', newPlayer.id), newPlayer);
+      } catch (err) {
+        console.warn('Firestore join write notice:', err);
+      }
     } catch (err) {
-      console.error(err);
+      console.error('Join room error:', err);
+      alert('Masaya katılırken bir hata oluştu. Lütfen tekrar deneyin.');
     }
   };
 
@@ -301,13 +384,12 @@ export default function App() {
 
     if (player && player.isBot) {
       const timer = setTimeout(() => {
-        // Generate simulated bot hand of length player.handCount
         const dummyDeck = shuffleDeck(createDeck());
         const botHand = dummyDeck.slice(0, Math.max(1, player.handCount));
         const chosenCard = getBotPistiCardChoice(botHand, room.middleCards);
 
         executePistiCardPlay(player, chosenCard);
-      }, 1000 + Math.random() * 600);
+      }, 900 + Math.random() * 500);
 
       return () => clearTimeout(timer);
     }
@@ -331,7 +413,7 @@ export default function App() {
         }
 
         executeBatakBid(player.seatIndex, finalBid, dummyHand);
-      }, 1100);
+      }, 1000);
       return () => clearTimeout(timer);
     }
 
@@ -346,7 +428,7 @@ export default function App() {
           isKozBroken
         );
         executeBatakCardPlay(player, chosenCard);
-      }, 1200);
+      }, 1100);
       return () => clearTimeout(timer);
     }
   }, [room?.currentTurn, room?.status, currentTrick, isKozBroken, players]);
@@ -464,7 +546,7 @@ export default function App() {
         score: updatedPlayers.find((p) => p.id === player.id)?.score,
       });
     } catch {
-      // Offline / optimistic update handles UI
+      // Offline fallback
     }
   };
 
@@ -497,7 +579,6 @@ export default function App() {
     // After 4 bids, auction concludes
     if (nextBiddingCount >= 4) {
       if (newHighestBidder === -1) {
-        // All passed: standard Turkish batak forces dealer to take for 4
         newHighestBidder = room.dealerSeat;
         newHighestBid = 4;
       }
@@ -546,7 +627,6 @@ export default function App() {
       xrManagerRef.current.triggerHaptic(0.7, 50);
     }
 
-    // If koz played on non-koz lead, mark koz as broken
     if (card.suit === room.trumpSuit && currentTrick.length > 0 && currentTrick[0].card.suit !== room.trumpSuit) {
       setIsKozBroken(true);
     }
@@ -554,7 +634,6 @@ export default function App() {
     const newTrick: TrickCard[] = [...currentTrick, { card, seatIndex: player.seatIndex }];
     setCurrentTrick(newTrick);
 
-    // If local player, remove from hand
     if (player.id === localPlayer.id) {
       setPlayerHand((prev) => prev.filter((c) => c.id !== card.id));
     }
@@ -567,7 +646,6 @@ export default function App() {
     });
 
     if (newTrick.length === 4) {
-      // Trick is complete! Evaluate trick winner
       setTimeout(() => {
         const winnerSeat = evaluateBatakTrickWinner(newTrick, room.trumpSuit as Suit);
         soundEngine.playCollectPile();
@@ -584,14 +662,13 @@ export default function App() {
 
         const allFinished = withWonTrick.every((p) => p.handCount === 0);
         if (allFinished) {
-          // 13 tricks complete: Batak scoring
           withWonTrick.forEach((p) => {
             if (p.seatIndex === room.highestBidder) {
               if (p.tricksWon >= room.highestBid) {
                 p.score += room.highestBid * 10 + (p.tricksWon - room.highestBid);
                 p.roundScore = room.highestBid * 10 + (p.tricksWon - room.highestBid);
               } else {
-                p.score -= room.highestBid * 10; // BATTI!
+                p.score -= room.highestBid * 10;
                 p.roundScore = -(room.highestBid * 10);
               }
             } else {
@@ -619,7 +696,6 @@ export default function App() {
     if (room.gameType === 'pisti') {
       executePistiCardPlay(localPlayer, card);
     } else if (room.gameType === 'batak') {
-      // Validate move
       const validation = isValidBatakMove(
         card,
         playerHand,
@@ -704,13 +780,12 @@ export default function App() {
       setTelemetryData(record);
 
       try {
-        // Record telemetry to Firestore
         await setDoc(doc(db, 'rooms', room.id, 'telemetry', record.id), {
           ...record,
           updatedAt: serverTimestamp(),
         });
       } catch {
-        // Handled silently
+        // Silently handled
       }
     },
     [room?.id, room?.gameType, localPlayer?.id, localPlayer?.name]
