@@ -1,0 +1,130 @@
+{
+  "entities": {
+    "Room": {
+      "title": "Room",
+      "description": "Multiplayer WebXR card game room for Pişti and Batak",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "code": { "type": "string", "maxLength": 10 },
+        "name": { "type": "string", "maxLength": 64 },
+        "gameType": { "type": "string", "enum": ["pisti", "batak"] },
+        "batakMode": { "type": "string", "enum": ["ihale", "koz_maca", "esli"] },
+        "targetScore": { "type": "number" },
+        "maxPlayers": { "type": "number", "enum": [2, 4] },
+        "status": { "type": "string", "enum": ["waiting", "dealing", "bidding", "playing", "round_ended", "game_over"] },
+        "hostId": { "type": "string", "maxLength": 64 },
+        "currentTurn": { "type": "number" },
+        "dealerSeat": { "type": "number" },
+        "trumpSuit": { "type": "string", "maxLength": 16 },
+        "highestBid": { "type": "number" },
+        "highestBidder": { "type": "number" },
+        "middleCardsCount": { "type": "number" },
+        "deckCount": { "type": "number" },
+        "roundNumber": { "type": "number" },
+        "lastActionText": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "code", "gameType", "maxPlayers", "status", "hostId"]
+    },
+    "RoomPlayer": {
+      "title": "RoomPlayer",
+      "description": "Player in a VR card room with seat, avatar, hands, and scores",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "roomId": { "type": "string", "maxLength": 64 },
+        "userId": { "type": "string", "maxLength": 64 },
+        "name": { "type": "string", "maxLength": 32 },
+        "seatIndex": { "type": "number" },
+        "avatarType": { "type": "string", "maxLength": 32 },
+        "isHost": { "type": "boolean" },
+        "isReady": { "type": "boolean" },
+        "isBot": { "type": "boolean" },
+        "isMuted": { "type": "boolean" },
+        "isSpeaking": { "type": "boolean" },
+        "handCount": { "type": "number" },
+        "score": { "type": "number" },
+        "tricksWon": { "type": "number" },
+        "pistiCount": { "type": "number" },
+        "bid": { "type": "number" },
+        "headPose": { "type": "object" },
+        "leftHand": { "type": "object" },
+        "rightHand": { "type": "object" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "roomId", "name", "seatIndex"]
+    },
+    "HandTelemetry": {
+      "title": "HandTelemetry",
+      "description": "Player hand tracking telemetry recording for Quest 3 analysis and replay",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "roomId": { "type": "string", "maxLength": 64 },
+        "playerId": { "type": "string", "maxLength": 64 },
+        "gameType": { "type": "string", "maxLength": 16 },
+        "jointCount": { "type": "number" },
+        "pinchCount": { "type": "number" },
+        "hapticCount": { "type": "number" },
+        "durationSeconds": { "type": "number" },
+        "lastJointSnapshot": { "type": "object" },
+        "recordedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "roomId", "playerId"]
+    },
+    "VoiceSignal": {
+      "title": "VoiceSignal",
+      "description": "WebRTC spatial voice chat signaling message",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "roomId": { "type": "string", "maxLength": 64 },
+        "senderId": { "type": "string", "maxLength": 64 },
+        "receiverId": { "type": "string", "maxLength": 64 },
+        "type": { "type": "string", "enum": ["offer", "answer", "candidate"] },
+        "payload": { "type": "string", "maxLength": 2048 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "roomId", "senderId", "receiverId", "type", "payload"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile with card game stats and VR preferences",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "displayName": { "type": "string", "maxLength": 32 },
+        "avatarType": { "type": "string", "maxLength": 32 },
+        "pistiWins": { "type": "number" },
+        "batakWins": { "type": "number" },
+        "totalGames": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "displayName"]
+    }
+  },
+  "firestore": {
+    "/rooms/{roomId}": {
+      "schema": { "$ref": "#/entities/Room" },
+      "description": "Collection of multiplayer VR card rooms"
+    },
+    "/rooms/{roomId}/players/{playerId}": {
+      "schema": { "$ref": "#/entities/RoomPlayer" },
+      "description": "Active players and avatars seated in the room"
+    },
+    "/rooms/{roomId}/telemetry/{telemetryId}": {
+      "schema": { "$ref": "#/entities/HandTelemetry" },
+      "description": "Player VR hand tracking recorded telemetry sessions"
+    },
+    "/rooms/{roomId}/signals/{signalId}": {
+      "schema": { "$ref": "#/entities/VoiceSignal" },
+      "description": "WebRTC audio signaling for spatial microphone chat"
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Public user card statistics and custom avatar preferences"
+    }
+  }
+}

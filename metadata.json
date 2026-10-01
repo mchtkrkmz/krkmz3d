@@ -1,0 +1,11 @@
+{
+  "name": "VR Pişti & Batak XR",
+  "description": "Meta Quest 3 WebXR el takibi ve gerçekçi fiziklerle 2 ve 4 kişilik Pişti ve Batak kart salonu, gerçek zamanlı çok oyunculu masa ve mekânsal sesli sohbet.",
+  "requestFramePermissions": [
+    "microphone",
+    "xr-spatial-tracking"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
